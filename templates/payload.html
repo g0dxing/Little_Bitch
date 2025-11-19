@@ -201,8 +201,8 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-                <button type="button" class="btn btn-success" onclick="copyEncoded()">
-                    <i class="fas fa-copy"></i> 复制结果
+                <button type="button" class="btn btn-success" onclick="createPayload()">
+                    <i class="fas fa-plus"></i> 新建
                 </button>
             </div>
         </div>
@@ -766,7 +766,7 @@
 
     function copyPayloadUrl() {
         const payloadUrl = $('#payloadUrl').val();
-        
+
         if (!payloadUrl) {
             showAlert('没有URL可复制', 'warning');
             return;
@@ -833,28 +833,37 @@
         $('#scriptPayloadModal').modal('show');
     }
 
-// 使用事件委托处理模态框中的复制按钮
-$(document).on('click', '#scriptPayloadModal .btn-outline-success', function(e) {
-    e.preventDefault();
-    copyScriptPayloadDirect();
-});
+    // 使用事件委托处理模态框中的复制按钮
+    $(document).on('click', '#scriptPayloadModal .btn-outline-success', function (e) {
+        e.preventDefault();
+        copyScriptPayloadDirect();
+    });
 
-function copyScriptPayloadDirect() {
-    const input = document.getElementById('scriptPayload');
-    if (!input || !input.value) {
-        showAlert('请先生成Payload', 'warning');
-        return;
-    }
-    
-    // 确保输入框获得焦点
-    input.focus();
-    input.select();
-    
-    // 使用现代 Clipboard API
-    if (navigator.clipboard) {
-        navigator.clipboard.writeText(input.value).then(() => {
-            showAlert('Payload代码已复制到剪贴板', 'success');
-        }).catch(() => {
+    function copyScriptPayloadDirect() {
+        const input = document.getElementById('scriptPayload');
+        if (!input || !input.value) {
+            showAlert('请先生成Payload', 'warning');
+            return;
+        }
+
+        // 确保输入框获得焦点
+        input.focus();
+        input.select();
+
+        // 使用现代 Clipboard API
+        if (navigator.clipboard) {
+            navigator.clipboard.writeText(input.value).then(() => {
+                showAlert('Payload代码已复制到剪贴板', 'success');
+            }).catch(() => {
+                // 降级方案
+                try {
+                    document.execCommand('copy');
+                    showAlert('Payload代码已复制到剪贴板', 'success');
+                } catch (err) {
+                    showAlert('已选中文本，请按 Ctrl+C 手动复制', 'info');
+                }
+            });
+        } else {
             // 降级方案
             try {
                 document.execCommand('copy');
@@ -862,17 +871,8 @@ function copyScriptPayloadDirect() {
             } catch (err) {
                 showAlert('已选中文本，请按 Ctrl+C 手动复制', 'info');
             }
-        });
-    } else {
-        // 降级方案
-        try {
-            document.execCommand('copy');
-            showAlert('Payload代码已复制到剪贴板', 'success');
-        } catch (err) {
-            showAlert('已选中文本，请按 Ctrl+C 手动复制', 'info');
         }
     }
-}
 
 
 
