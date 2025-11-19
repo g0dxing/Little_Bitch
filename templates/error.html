@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block title %}{{ error_code }} - 小绿茶XSS反连平台{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow text-center">
+                <div class="card-body py-5">
+                    <div class="error-icon mb-4">
+                        {% if error_code == 404 %}
+                            <i class="fas fa-search text-warning" style="font-size: 4rem;"></i>
+                        {% elif error_code == 500 %}
+                            <i class="fas fa-exclamation-triangle text-danger" style="font-size: 4rem;"></i>
+                        {% else %}
+                            <i class="fas fa-exclamation-circle text-info" style="font-size: 4rem;"></i>
+                        {% endif %}
+                    </div>
+                    
+                    <h1 class="display-1 fw-bold text-success">{{ error_code }}</h1>
+                    <h3 class="mb-3">{{ error_message }}</h3>
+                    <p class="text-muted mb-4">
+                        {% if error_code == 404 %}
+                            抱歉，您访问的页面不存在或已被移动。
+                        {% elif error_code == 500 %}
+                            服务器遇到了一个错误，请稍后再试。
+                        {% else %}
+                            发生了一个未知错误。
+                        {% endif %}
+                    </p>
+                    
+                    <div class="d-flex justify-content-center gap-2">
+                        <a href="{{ url_for('dashboard') }}" class="btn btn-success">
+                            <i class="fas fa-home"></i> 返回首页
+                        </a>
+                        <a href="javascript:history.back()" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i> 返回上页
+                        </a>
+                        <button onclick="location.reload()" class="btn btn-info">
+                            <i class="fas fa-sync-alt"></i> 刷新页面
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            {% if error_code == 404 %}
+            <div class="card shadow mt-4">
+                <div class="card-body">
+                    <h5 class="card-title text-success">
+                        <i class="fas fa-lightbulb"></i> 快速导航
+                    </h5>
+                    <p class="card-text">您可以访问以下页面：</p>
+                    <div class="list-group">
+                        <a href="{{ url_for('dashboard') }}" class="list-group-item list-group-item-action">
+                            <i class="fas fa-tachometer-alt"></i> 控制台
+                        </a>
+                        <a href="{{ url_for('templates_page') }}" class="list-group-item list-group-item-action">
+                            <i class="fas fa-file-code"></i> 模板管理
+                        </a>
+                        <a href="{{ url_for('payloads_page') }}" class="list-group-item list-group-item-action">
+                            <i class="fas fa-code"></i> JS管理
+                        </a>
+                        <a href="{{ url_for('logs_page') }}" class="list-group-item list-group-item-action">
+                            <i class="fas fa-database"></i> 数据监控
+                        </a>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<style>
+.error-page {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+</style>
+{% endblock %}

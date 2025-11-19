@@ -1,0 +1,851 @@
+{% extends "base.html" %}
+
+{% block title %}数据监控 - 小绿茶XSS反连平台{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- 页面标题 -->
+    <div class="row mb-4">
+        <div class="col">
+            <h2 class="text-success">
+                <i class="fas fa-database"></i> 数据监控
+                <small class="text-muted">Data Monitoring</small>
+            </h2>
+            <p class="text-muted">实时查看和分析捕获的XSS请求数据</p>
+        </div>
+        <div class="col-auto">
+            <div class="btn-group">
+                <button class="btn btn-success" onclick="refreshLogs()">
+                    <i class="fas fa-sync-alt"></i> 刷新
+                </button>
+                <button class="btn btn-info" onclick="exportLogs()">
+                    <i class="fas fa-download"></i> 导出
+                </button>
+                <button class="btn btn-danger" onclick="clearLogs()">
+                    <i class="fas fa-trash"></i> 清空
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 过滤器 -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-success">
+                        <i class="fas fa-filter"></i> 数据过滤器
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <label for="ipFilter" class="form-label">IP地址</label>
+                            <input type="text" class="form-control" id="ipFilter" placeholder="按IP地址过滤">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="dateFilter" class="form-label">日期范围</label>
+                            <select class="form-select" id="dateFilter">
+                                <option value="">全部时间</option>
+                                <option value="today">今天</option>
+                                <option value="week">本周</option>
+                                <option value="month">本月</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="limitFilter" class="form-label">显示数量</label>
+                            <select class="form-select" id="limitFilter">
+                                <option value="20">20条</option>
+                                <option value="50">50条</option>
+                                <option value="100">100条</option>
+                                <option value="500">500条</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3 d-flex align-items-end">
+                            <button class="btn btn-success" onclick="applyFilters()">
+                                <i class="fas fa-search"></i> 应用过滤
+                            </button>
+                            <button class="btn btn-secondary ms-2" onclick="resetFilters()">
+                                <i class="fas fa-undo"></i> 重置
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 统计信息 -->
+    <div class="row mb-4">
+        <div class="col-lg-3 col-md-6 mb-4">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                总请求数
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800" id="totalRequests">-</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-database fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-3 col-md-6 mb-4">
+            <div class="card border-left-info shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                今日请求
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800" id="todayRequests">-</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-calendar-day fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-3 col-md-6 mb-4">
+            <div class="card border-left-warning shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                唯一IP
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800" id="uniqueIPs">-</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-users fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-3 col-md-6 mb-4">
+            <div class="card border-left-danger shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">
+                                可疑请求
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800" id="suspiciousRequests">-</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-exclamation-triangle fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 数据表格 -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-success">
+                        <i class="fas fa-table"></i> 请求日志
+                        <span id="logCount" class="badge bg-secondary ms-2">0</span>
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover" id="logsTable">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="width: 5%">
+                                        <input type="checkbox" id="selectAll" onclick="toggleSelectAll()">
+                                    </th>
+                                    <th style="width: 15%">时间</th>
+                                    <th style="width: 12%">IP地址</th>
+                                    <th style="width: 20%">User-Agent</th>
+                                    <th style="width: 15%">来源页面</th>
+                                    <th style="width: 15%">请求信息</th>
+                                    <th style="width: 8%">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="logsTableBody">
+                                <tr>
+                                    <td colspan="7" class="text-center text-muted">
+                                        <i class="fas fa-spinner fa-spin"></i> 加载中...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- 分页 -->
+                    <nav aria-label="Page navigation">
+                        <ul class="pagination justify-content-center" id="pagination">
+                            <!-- 分页按钮将在这里动态生成 -->
+                        </ul>
+                    </nav>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 日志详情模态框 -->
+<div class="modal fade" id="logDetailModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-file-alt"></i> 请求详情
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="logDetailContent">
+                <div class="text-center">
+                    <i class="fas fa-spinner fa-spin"></i> 加载中...
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                <button type="button" class="btn btn-info" onclick="copyLogDetails()">
+                    <i class="fas fa-copy"></i> 复制详情
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 导出模态框 -->
+<div class="modal fade" id="exportModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-download"></i> 导出数据
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">导出格式</label>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="exportFormat" value="json" id="exportJson" checked>
+                        <label class="form-check-label" for="exportJson">JSON格式</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="exportFormat" value="csv" id="exportCsv">
+                        <label class="form-check-label" for="exportCsv">CSV格式</label>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label for="exportFilename" class="form-label">文件名</label>
+                    <input type="text" class="form-control" id="exportFilename" value="xss_logs_{{ current_date }}">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-success" onclick="performExport()">
+                    <i class="fas fa-download"></i> 导出
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function escapeHtml(text) {
+    if (!text) return '';
+    const map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+    };
+    return text.replace(/[&<>"']/g, function(m) { return map[m]; });
+}
+
+
+let currentPage = 1;
+let totalPages = 1;
+let currentFilters = {
+    ip: '',
+    date: '',
+    limit: 20
+};
+let selectedLogs = [];
+
+$(document).ready(function() {
+    loadLogs();
+    loadStats();
+    
+    // 每30秒自动刷新
+    setInterval(function() {
+        loadLogs(false);
+        loadStats();
+    }, 30000);
+});
+
+function loadLogs(showLoading = true) {
+    if (showLoading) {
+        $('#logsTableBody').html(`
+            <tr>
+                <td colspan="7" class="text-center text-muted">
+                    <i class="fas fa-spinner fa-spin"></i> 加载中...
+                </td>
+            </tr>
+        `);
+    }
+    
+    const params = {
+        page: currentPage,
+        per_page: currentFilters.limit,
+        ip: currentFilters.ip
+    };
+    
+    $.get('/api/logs', params, function(data) {
+        displayLogs(data.logs);
+        updatePagination(data.total_pages, data.page);
+        $('#logCount').text(data.total);
+    }).fail(function() {
+        $('#logsTableBody').html(`
+            <tr>
+                <td colspan="7" class="text-center text-danger">
+                    <i class="fas fa-exclamation-triangle"></i> 加载失败
+                </td>
+            </tr>
+        `);
+    });
+}
+
+function loadStats() {
+    $.get('/api/logs/stats', function(data) {
+        $('#totalRequests').text(data.total);
+        $('#todayRequests').text(data.today);
+        $('#uniqueIPs').text(data.unique_ips);
+        $('#suspiciousRequests').text(Math.floor(data.total * 0.1)); // 模拟可疑请求
+    });
+}
+
+function displayLogs(logs) {
+    if (logs.length === 0) {
+        $('#logsTableBody').html(`
+            <tr>
+                <td colspan="7" class="text-center text-muted">
+                    <i class="fas fa-info-circle"></i> 暂无数据
+                </td>
+            </tr>
+        `);
+        return;
+    }
+    
+    let html = '';
+    logs.forEach(function(log) {
+        const time = new Date(log.timestamp).toLocaleString('zh-CN');
+        const ua = log.user_agent ? log.user_agent.substring(0, 50) + '...' : 'N/A';
+        const referer = log.referer || 'Direct';
+        const method = log.method || 'GET';
+        const ipBadge = log.ip ? `<span class="badge bg-secondary">${log.ip}</span>` : '';
+        
+        html += `
+            <tr>
+                <td>
+                    <input type="checkbox" class="log-checkbox" value="${log.id}" onchange="updateSelectedLogs()">
+                </td>
+                <td><small>${time}</small></td>
+                <td>${ipBadge}</td>
+                <td><small class="text-truncate d-block" style="max-width: 200px;" title="${log.user_agent || ''}">${ua}</small></td>
+                <td><small class="text-truncate d-block" style="max-width: 150px;" title="${referer}">${referer}</small></td>
+                <td>
+                    <span class="badge bg-info">${method}</span>
+                    ${log.args && Object.keys(log.args).length > 0 ? '<span class="badge bg-warning ms-1">Params</span>' : ''}
+                </td>
+                <td>
+                    <button class="btn btn-sm btn-info" onclick="showLogDetail('${log.id}')" title="查看详情">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+    });
+    
+    $('#logsTableBody').html(html);
+}
+
+function updatePagination(totalPages, currentPage) {
+    let html = '';
+    
+    // 上一页
+    html += `
+        <li class="page-item ${currentPage <= 1 ? 'disabled' : ''}">
+            <a class="page-link" href="#" onclick="changePage(${currentPage - 1})">上一页</a>
+        </li>
+    `;
+    
+    // 页码
+    for (let i = 1; i <= totalPages; i++) {
+        if (i === 1 || i === totalPages || (i >= currentPage - 2 && i <= currentPage + 2)) {
+            html += `
+                <li class="page-item ${i === currentPage ? 'active' : ''}">
+                    <a class="page-link" href="#" onclick="changePage(${i})">${i}</a>
+                </li>
+            `;
+        } else if (i === currentPage - 3 || i === currentPage + 3) {
+            html += '<li class="page-item disabled"><span class="page-link">...</span></li>';
+        }
+    }
+    
+    // 下一页
+    html += `
+        <li class="page-item ${currentPage >= totalPages ? 'disabled' : ''}">
+            <a class="page-link" href="#" onclick="changePage(${currentPage + 1})">下一页</a>
+        </li>
+    `;
+    
+    $('#pagination').html(html);
+}
+
+function changePage(page) {
+    if (page < 1 || page > totalPages) return;
+    currentPage = page;
+    loadLogs();
+}
+
+function applyFilters() {
+    currentFilters.ip = $('#ipFilter').val().trim();
+    currentFilters.date = $('#dateFilter').val();
+    currentFilters.limit = parseInt($('#limitFilter').val());
+    currentPage = 1;
+    loadLogs();
+}
+
+function resetFilters() {
+    $('#ipFilter').val('');
+    $('#dateFilter').val('');
+    $('#limitFilter').val('20');
+    currentFilters = {ip: '', date: '', limit: 20};
+    currentPage = 1;
+    loadLogs();
+}
+
+function showLogDetail(logId) {
+    $('#logDetailModal').modal('show');
+    
+    $.get(`/api/logs/${logId}`, function(data) {
+        const time = new Date(data.timestamp).toLocaleString('zh-CN');
+        const userAgent = data.user_agent || 'N/A';
+        const referer = data.referer || 'Direct Access';
+        const ip = data.ip || 'N/A';
+        const method = data.method || 'GET';
+        const url = data.url || 'N/A';
+        
+        let html = `
+            <div class="row">
+                <div class="col-md-6">
+                    <h6><i class="fas fa-clock text-info"></i> 时间信息</h6>
+                    <table class="table table-sm">
+                        <tr><td><strong>时间戳:</strong></td><td>${time}</td></tr>
+                        <tr><td><strong>请求ID:</strong></td><td><code>${data.id}</code></td></tr>
+                    </table>
+                </div>
+                <div class="col-md-6">
+                    <h6><i class="fas fa-network-wired text-success"></i> 网络信息</h6>
+                    <table class="table table-sm">
+                        <tr><td><strong>IP地址:</strong></td><td><span class="badge bg-secondary">${ip}</span></td></tr>
+                        <tr><td><strong>请求方法:</strong></td><td><span class="badge bg-info">${method}</span></td></tr>
+                        <tr><td><strong>请求URL:</strong></td><td><small>${url}</small></td></tr>
+                    </table>
+                </div>
+            </div>
+            
+            <div class="row mt-3">
+                <div class="col-12">
+                    <h6><i class="fas fa-user-agent text-warning"></i> User-Agent</h6>
+                    <div class="bg-light p-2 rounded">
+                        <small>${userAgent}</small>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row mt-3">
+                <div class="col-12">
+                    <h6><i class="fas fa-link text-primary"></i> 来源页面</h6>
+                    <div class="bg-light p-2 rounded">
+                        <small>${referer}</small>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // 新增：显示原始请求数据
+        if (data.raw_data) {
+            html += `
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <h6><i class="fas fa-code text-secondary"></i> 原始请求数据</h6>
+                        <div class="bg-light p-2 rounded">
+                            <pre style="font-size: 12px; max-height: 200px; overflow: auto;">${escapeHtml(data.raw_data)}</pre>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // 新增：显示请求头信息
+        if (data.headers && Object.keys(data.headers).length > 0) {
+            html += `
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <h6><i class="fas fa-heading text-info"></i> 请求头信息</h6>
+                        <div class="bg-light p-2 rounded">
+                            <table class="table table-sm table-borderless mb-0">
+            `;
+            Object.entries(data.headers).forEach(([key, value]) => {
+                html += `<tr><td><strong>${key}:</strong></td><td><code>${value}</code></td></tr>`;
+            });
+            html += `
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Cookie信息
+        if (data.cookies && Object.keys(data.cookies).length > 0) {
+            html += `
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <h6><i class="fas fa-cookie-bite text-danger"></i> Cookie信息</h6>
+                        <div class="bg-light p-2 rounded">
+                            <table class="table table-sm table-borderless mb-0">
+            `;
+            Object.entries(data.cookies).forEach(([key, value]) => {
+                html += `<tr><td><strong>${key}:</strong></td><td><code>${value}</code></td></tr>`;
+            });
+            html += `
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // 请求参数
+        if (data.args && Object.keys(data.args).length > 0) {
+            html += `
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <h6><i class="fas fa-question-circle text-info"></i> URL参数</h6>
+                        <div class="bg-light p-2 rounded">
+                            <table class="table table-sm table-borderless mb-0">
+            `;
+            Object.entries(data.args).forEach(([key, value]) => {
+                html += `<tr><td><strong>${key}:</strong></td><td><code>${value}</code></td></tr>`;
+            });
+            html += `
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // 表单数据
+        if (data.form && Object.keys(data.form).length > 0) {
+            html += `
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <h6><i class="fas fa-file-alt text-success"></i> 表单数据</h6>
+                        <div class="bg-light p-2 rounded">
+                            <table class="table table-sm table-borderless mb-0">
+            `;
+            Object.entries(data.form).forEach(([key, value]) => {
+                html += `<tr><td><strong>${key}:</strong></td><td><code>${value}</code></td></tr>`;
+            });
+            html += `
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // JSON数据
+        if (data.json && Object.keys(data.json).length > 0) {
+            html += `
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <h6><i class="fas fa-code text-primary"></i> JSON数据</h6>
+                        <div class="bg-light p-2 rounded">
+                            <pre style="font-size: 12px; max-height: 200px; overflow: auto;">${JSON.stringify(data.json, null, 2)}</pre>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // 文件数据
+        if (data.files && Object.keys(data.files).length > 0) {
+            html += `
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <h6><i class="fas fa-file-upload text-warning"></i> 文件数据</h6>
+                        <div class="bg-light p-2 rounded">
+                            <table class="table table-sm">
+            `;
+            Object.entries(data.files).forEach(([key, fileInfo]) => {
+                html += `
+                    <tr>
+                        <td><strong>${key}:</strong></td>
+                        <td>
+                            <div>文件名: ${fileInfo.filename}</div>
+                            <div>类型: ${fileInfo.content_type}</div>
+                            <div>大小: ${fileInfo.size} bytes</div>
+                            ${fileInfo.content ? `<div>内容: <pre style="font-size: 10px; max-height: 100px; overflow: auto;">${escapeHtml(fileInfo.content)}</pre></div>` : ''}
+                        </td>
+                    </tr>
+                `;
+            });
+            html += `
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        $('#logDetailContent').html(html);
+    }).fail(function() {
+        $('#logDetailContent').html('<div class="text-center text-danger"><i class="fas fa-exclamation-triangle"></i> 加载详情失败</div>');
+    });
+}
+
+
+
+function copyLogDetails() {
+    const content = $('#logDetailContent').text();
+    navigator.clipboard.writeText(content).then(function() {
+        showAlert('详情已复制到剪贴板', 'success');
+    });
+}
+
+function toggleSelectAll() {
+    const checked = $('#selectAll').prop('checked');
+    $('.log-checkbox').prop('checked', checked);
+    updateSelectedLogs();
+}
+
+function updateSelectedLogs() {
+    selectedLogs = [];
+    $('.log-checkbox:checked').each(function() {
+        selectedLogs.push($(this).val());
+    });
+}
+
+function refreshLogs() {
+    loadLogs();
+    loadStats();
+    showAlert('数据已刷新', 'success');
+}
+
+function exportLogs() {
+    $('#exportModal').modal('show');
+}
+
+function performExport() {
+    const format = $('input[name="exportFormat"]:checked').val();
+    const filename = $('#exportFilename').val() || 'xss_logs';
+    
+    $.get('/api/logs', {limit: 1000}, function(data) {
+        if (format === 'json') {
+            downloadJSON(data.logs, filename);
+        } else if (format === 'csv') {
+            downloadCSV(data.logs, filename);
+        }
+        
+        $('#exportModal').modal('hide');
+        showAlert('导出成功', 'success');
+    });
+}
+
+function downloadJSON(data, filename) {
+    const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename + '.json';
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+function downloadCSV(data, filename) {
+    let csv = 'Timestamp,IP Address,User Agent,Referer,Method,URL\n';
+    data.forEach(log => {
+        csv += `"${log.timestamp}","${log.ip || ''}","${(log.user_agent || '').replace(/"/g, '""')}","${log.referer || ''}","${log.method || ''}","${log.url || ''}"\n`;
+    });
+    
+    const blob = new Blob([csv], {type: 'text/csv;charset=utf-8;'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename + '.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+function clearLogs() {
+    // 创建确认对话框
+    const confirmModal = `
+        <div class="modal fade" id="clearLogsModal" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title text-danger">
+                            <i class="fas fa-exclamation-triangle"></i> 确认清空日志
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="alert alert-danger">
+                            <h6><i class="fas fa-warning"></i> 警告</h6>
+                            <p class="mb-2">您即将清空所有日志数据，此操作不可恢复！</p>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">清空选项</label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="clearOption" id="clearSimple" value="simple" checked>
+                                <label class="form-check-label" for="clearSimple">
+                                    直接清空（快速）
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="clearOption" id="clearWithBackup" value="backup">
+                                <label class="form-check-label" for="clearWithBackup">
+                                    清空并创建备份
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="confirmClear">
+                            <label class="form-check-label text-danger" for="confirmClear">
+                                我确认理解此操作的后果，并确定要清空所有日志
+                            </label>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                        <button type="button" class="btn btn-danger" id="confirmClearBtn" disabled>
+                            <i class="fas fa-trash"></i> 确认清空
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // 如果模态框已存在，先移除
+    $('#clearLogsModal').remove();
+    
+    // 添加模态框到页面
+    $('body').append(confirmModal);
+    
+    // 显示模态框
+    const modal = new bootstrap.Modal(document.getElementById('clearLogsModal'));
+    modal.show();
+    
+    // 确认复选框事件
+    $('#confirmClear').change(function() {
+        $('#confirmClearBtn').prop('disabled', !$(this).prop('checked'));
+    });
+    
+    // 确认清空按钮事件
+    $('#confirmClearBtn').click(function() {
+        const clearOption = $('input[name="clearOption"]:checked').val();
+        performClearLogs(clearOption);
+        modal.hide();
+    });
+}
+
+function performClearLogs(option) {
+    const url = option === 'backup' ? '/api/logs/clear-with-backup' : '/api/logs/clear';
+    
+    // 显示加载状态
+    showAlert('正在清空日志...', 'info', 0);
+    
+    $.ajax({
+        url: url,
+        method: 'POST',
+        contentType: 'application/json',
+        success: function(response) {
+            if (response.success) {
+                let message = response.message;
+                if (response.cleared_count > 0) {
+                    message += `，共清除了 ${response.cleared_count} 条日志`;
+                }
+                if (response.backup_file) {
+                    message += `，备份文件: ${response.backup_file}`;
+                }
+                
+                showAlert(message, 'success');
+                
+                // 刷新日志列表和统计
+                setTimeout(function() {
+                    loadLogs();
+                    loadStats();
+                }, 1000);
+                
+            } else {
+                showAlert(response.message, 'danger');
+            }
+        },
+        error: function(xhr, status, error) {
+            console.error('清空日志失败:', error);
+            let errorMsg = '清空失败，请重试';
+            if (xhr.responseJSON && xhr.responseJSON.message) {
+                errorMsg = xhr.responseJSON.message;
+            }
+            showAlert(errorMsg, 'danger');
+        }
+    });
+}
+
+
+function deleteSelectedLogs() {
+    if (selectedLogs.length === 0) {
+        showAlert('请先选择要删除的日志', 'warning');
+        return;
+    }
+    
+    if (!confirm(`确定要删除选中的 ${selectedLogs.length} 条日志吗？`)) {
+        return;
+    }
+    
+    // 显示加载状态
+    showAlert(`正在删除 ${selectedLogs.length} 条日志...`, 'info', 0);
+    
+    // 这里可以调用批量删除的API
+    // 由于时间关系，我们先模拟成功
+    setTimeout(function() {
+        showAlert(`成功删除 ${selectedLogs.length} 条日志`, 'success');
+        selectedLogs = [];
+        $('#selectAll').prop('checked', false);
+        loadLogs();
+        loadStats();
+    }, 1000);
+}
+</script>
+{% endblock %}

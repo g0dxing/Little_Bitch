@@ -1,0 +1,688 @@
+{% extends "base.html" %}
+
+{% block title %}系统设置 - 小绿茶XSS反连平台{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- 页面标题 -->
+    <div class="row mb-4">
+        <div class="col">
+            <h2 class="text-success">
+                <i class="fas fa-cog"></i> 系统设置
+                <small class="text-muted">Settings</small>
+            </h2>
+            <p class="text-muted">配置平台参数和通知设置</p>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- 左侧：设置菜单 -->
+        <div class="col-lg-3 mb-4">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-success">
+                        <i class="fas fa-list"></i> 设置分类
+                    </h6>
+                </div>
+                <div class="card-body p-0">
+                    <div class="list-group list-group-flush" id="settingsMenu">
+                        <a href="#" class="list-group-item list-group-item-action active" data-section="smtp">
+                            <i class="fas fa-envelope text-primary"></i> 邮件设置
+                        </a>
+                        <a href="#" class="list-group-item list-group-item-action" data-section="notifications">
+                            <i class="fas fa-bell text-warning"></i> 通知设置
+                        </a>
+                        <a href="#" class="list-group-item list-group-item-action" data-section="security">
+                            <i class="fas fa-shield-alt text-danger"></i> 安全设置
+                        </a>
+                        <a href="#" class="list-group-item list-group-item-action" data-section="system">
+                            <i class="fas fa-server text-info"></i> 系统信息
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 右侧：设置内容 -->
+        <div class="col-lg-9 mb-4">
+            <!-- 邮件设置 -->
+            <div class="settings-section" id="smtp-section">
+                <div class="card shadow">
+                    <div class="card-header py-3">
+                        <h6 class="m-0 font-weight-bold text-success">
+                            <i class="fas fa-envelope"></i> 邮件设置 (SMTP)
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <form id="smtpForm">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" id="smtpEnabled"
+                                                name="smtp_enabled">
+                                            <label class="form-check-label" for="smtpEnabled">
+                                                <i class="fas fa-power-off"></i> 启用邮件通知
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div id="smtpSettings" style="display: none;">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="smtpServer" class="form-label">SMTP服务器</label>
+                                            <input type="text" class="form-control" id="smtpServer" name="smtp_server"
+                                                placeholder="如: smtp.gmail.com">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="smtpPort" class="form-label">端口</label>
+                                            <input type="number" class="form-control" id="smtpPort" name="smtp_port"
+                                                value="587" min="1" max="65535">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="smtpUsername" class="form-label">用户名</label>
+                                            <input type="text" class="form-control" id="smtpUsername"
+                                                name="smtp_username" placeholder="邮箱地址">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="smtpPassword" class="form-label">密码/授权码</label>
+                                            <div class="input-group">
+                                                <input type="password" class="form-control" id="smtpPassword"
+                                                    name="smtp_password">
+                                                <button class="btn btn-outline-secondary" type="button"
+                                                    onclick="togglePasswordVisibility('smtpPassword')">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="smtpRecipient" class="form-label">接收邮箱</label>
+                                            <input type="email" class="form-control" id="smtpRecipient"
+                                                name="smtp_recipient" placeholder="接收通知的邮箱地址">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="smtpSecurity" class="form-label">安全连接</label>
+                                            <select class="form-select" id="smtpSecurity" name="smtp_security">
+                                                <option value="tls">TLS</option>
+                                                <option value="ssl">SSL</option>
+                                                <option value="none">无</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <button type="button" class="btn btn-info" onclick="testSMTP()">
+                                        <i class="fas fa-paper-plane"></i> 测试邮件发送
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-12">
+                                    <div class="mb-3">
+                                        <label for="notificationTemplate" class="form-label">邮件通知模板</label>
+                                        <textarea class="form-control" id="notificationTemplate"
+                                            name="notification_template" rows="6" placeholder="邮件通知内容模板...">检测到新的XSS请求！
+                                            时间: {timestamp}
+                                            IP地址: {ip}
+                                            User-Agent: {user_agent}
+                                            来源页面: {referer}
+
+                                            请登录平台查看详细信息。
+                                        </textarea>
+                                        <div class="form-text">
+                                            支持的变量: {timestamp}, {ip}, {user_agent}, {referer}, {url}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="d-flex justify-content-end">
+                                <button type="button" class="btn btn-success" onclick="saveSMTPSettings()">
+                                    <i class="fas fa-save"></i> 保存设置
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 通知设置 -->
+            <div class="settings-section" id="notifications-section" style="display: none;">
+                <div class="card shadow">
+                    <div class="card-header py-3">
+                        <h6 class="m-0 font-weight-bold text-success">
+                            <i class="fas fa-bell"></i> 通知设置
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <form id="notificationsForm">
+                            <div class="mb-3">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="newRequestAlert"
+                                        name="new_request_alert" checked>
+                                    <label class="form-check-label" for="newRequestAlert">
+                                        <i class="fas fa-exclamation-circle"></i> 新请求即时提醒
+                                    </label>
+                                </div>
+                                <div class="form-text">开启后，当有新的XSS反向连接时会在页面右上角显示提醒</div>
+                            </div>
+
+                            <!-- 将邮件通知模板移到邮件设置中 -->
+                        </form>
+
+                        <div class="d-flex justify-content-end">
+                            <button type="button" class="btn btn-success" onclick="saveNotificationSettings()">
+                                <i class="fas fa-save"></i> 保存设置
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 安全设置 -->
+            <div class="settings-section" id="security-section" style="display: none;">
+                <div class="card shadow">
+                    <div class="card-header py-3">
+                        <h6 class="m-0 font-weight-bold text-success">
+                            <i class="fas fa-shield-alt"></i> 安全设置
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <form id="securityForm">
+                            <div class="mb-3">
+                                <label for="sessionTimeout" class="form-label">会话超时时间</label>
+                                <select class="form-select" id="sessionTimeout" name="session_timeout">
+                                    <option value="30">30分钟</option>
+                                    <option value="60" selected>1小时</option>
+                                    <option value="120">2小时</option>
+                                    <option value="240">4小时</option>
+                                    <option value="480">8小时</option>
+                                </select>
+                                <div class="form-text">用户登录后的会话有效时间</div>
+                            </div>
+
+                            <div class="mb-3">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="ipWhitelist"
+                                        name="ip_whitelist">
+                                    <label class="form-check-label" for="ipWhitelist">
+                                        <i class="fas fa-list-check"></i> 启用IP白名单
+                                    </label>
+                                </div>
+                                <div class="form-text">只允许指定IP地址访问管理后台</div>
+                            </div>
+
+                            <div class="mb-3" id="whitelistIps" style="display: none;">
+                                <label for="allowedIPs" class="form-label">允许访问的IP地址</label>
+                                <textarea class="form-control" id="allowedIPs" name="allowed_ips" rows="4"
+                                    placeholder="每行一个IP地址，支持CIDR格式&#10;例如:&#10;192.168.1.0/24&#10;10.0.0.1"></textarea>
+                            </div>
+
+                            <div class="mb-3">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="rateLimit" name="rate_limit"
+                                        checked>
+                                    <label class="form-check-label" for="rateLimit">
+                                        <i class="fas fa-tachometer-alt"></i> 启用请求频率限制
+                                    </label>
+                                </div>
+                                <div class="form-text">防止暴力破解和恶意请求</div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="maxRequests" class="form-label">最大请求数</label>
+                                        <input type="number" class="form-control" id="maxRequests" name="max_requests"
+                                            value="100" min="10" max="1000">
+                                        <div class="form-text">每分钟的请求次数上限</div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="blockDuration" class="form-label">封禁时长</label>
+                                        <select class="form-select" id="blockDuration" name="block_duration">
+                                            <option value="5">5分钟</option>
+                                            <option value="15">15分钟</option>
+                                            <option value="30" selected>30分钟</option>
+                                            <option value="60">1小时</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            <hr>
+                            <!-- 新增：密码修改部分 -->
+                            <div class="mb-4">
+                                <h6 class="text-success">
+                                    <i class="fas fa-key"></i> 修改密码
+                                </h6>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="oldPassword" class="form-label">旧密码</label>
+                                            <div class="input-group">
+                                                <input type="password" class="form-control" id="oldPassword"
+                                                    placeholder="请输入当前密码">
+                                                <button class="btn btn-outline-secondary" type="button"
+                                                    onclick="togglePasswordVisibility('oldPassword')">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="newPassword" class="form-label">新密码</label>
+                                            <div class="input-group">
+                                                <input type="password" class="form-control" id="newPassword"
+                                                    placeholder="请输入新密码">
+                                                <button class="btn btn-outline-secondary" type="button"
+                                                    onclick="togglePasswordVisibility('newPassword')">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="confirmPassword" class="form-label">确认新密码</label>
+                                            <div class="input-group">
+                                                <input type="password" class="form-control" id="confirmPassword"
+                                                    placeholder="请再次输入新密码">
+                                                <button class="btn btn-outside-secondary" type="button"
+                                                    onclick="togglePasswordVisibility('confirmPassword')">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <button type="button" class="btn btn-warning" onclick="changePassword()">
+                                        <i class="fas fa-key"></i> 修改密码
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="d-flex justify-content-end">
+                                <button type="button" class="btn btn-success" onclick="saveSecuritySettings()">
+                                    <i class="fas fa-save"></i> 保存设置
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 系统信息 -->
+            <div class="settings-section" id="system-section" style="display: none;">
+                <div class="card shadow">
+                    <div class="card-header py-3">
+                        <h6 class="m-0 font-weight-bold text-success">
+                            <i class="fas fa-server"></i> 系统信息
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6><i class="fas fa-info-circle text-info"></i> 平台信息</h6>
+                                <table class="table table-sm">
+                                    <tr>
+                                        <td><strong>平台名称:</strong></td>
+                                        <td>小绿茶XSS反连平台</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>版本号:</strong></td>
+                                        <td>v1.0.0</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>运行时间:</strong></td>
+                                        <td id="uptime">{{ uptime }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Python版本:</strong></td>
+                                        <td>3.8+</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Flask版本:</strong></td>
+                                        <td>2.3.3</td>
+                                    </tr>
+                                </table>
+                            </div>
+                            <div class="col-md-6">
+                                <h6><i class="fas fa-chart-bar text-success"></i> 数据统计</h6>
+                                <table class="table table-sm">
+                                    <tr>
+                                        <td><strong>总请求数:</strong></td>
+                                        <td id="totalRequests">-</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>模板数量:</strong></td>
+                                        <td id="templateCount">-</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Payload数量:</strong></td>
+                                        <td id="payloadCount">-</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>数据文件大小:</strong></td>
+                                        <td id="dataSize">-</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>会话文件数:</strong></td>
+                                        <td id="sessionCount">-</td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+
+                        <hr>
+
+                        <div class="row">
+                            <div class="col-12">
+                                <h6><i class="fas fa-tools text-warning"></i> 维护工具</h6>
+                                <div class="btn-group" role="group">
+                                    <button type="button" class="btn btn-info" onclick="backupData()">
+                                        <i class="fas fa-download"></i> 备份数据
+                                    </button>
+                                    <button type="button" class="btn btn-warning" onclick="clearSessions()">
+                                        <i class="fas fa-broom"></i> 清理会话
+                                    </button>
+                                    <button type="button" class="btn btn-danger" onclick="resetSystem()">
+                                        <i class="fas fa-redo"></i> 重置系统
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let currentSettings = {};
+
+    $(document).ready(function () {
+        loadSettings();
+        loadSystemStats();
+
+        // 设置菜单切换
+        $('#settingsMenu a').click(function (e) {
+            e.preventDefault();
+
+            // 更新菜单状态
+            $('#settingsMenu a').removeClass('active');
+            $(this).addClass('active');
+
+            // 显示对应设置区域
+            const section = $(this).data('section');
+            $('.settings-section').hide();
+            $(`#${section}-section`).show();
+        });
+
+        // SMTP启用状态切换
+        $('#smtpEnabled').change(function () {
+            if ($(this).prop('checked')) {
+                $('#smtpSettings').show();
+            } else {
+                $('#smtpSettings').hide();
+            }
+        });
+
+        // IP白名单切换
+        $('#ipWhitelist').change(function () {
+            if ($(this).prop('checked')) {
+                $('#whitelistIps').show();
+            } else {
+                $('#whitelistIps').hide();
+            }
+        });
+    });
+
+    function loadSettings() {
+        $.get('/api/settings', function (data) {
+            currentSettings = data;
+
+            // 加载SMTP设置
+            $('#smtpEnabled').prop('checked', data.smtp.enabled);
+            $('#smtpServer').val(data.smtp.server || '');
+            $('#smtpPort').val(data.smtp.port || 587);
+            $('#smtpUsername').val(data.smtp.username || '');
+            $('#smtpRecipient').val(data.smtp.recipient || '');
+            $('#smtpSecurity').val(data.smtp.security || 'tls');
+
+            if (data.smtp.enabled) {
+                $('#smtpSettings').show();
+            }
+
+            // 加载通知设置
+            $('#emailNotifications').prop('checked', data.notifications.email_enabled);
+            $('#newRequestAlert').prop('checked', data.notifications.new_request_alert);
+            $('#notificationInterval').val(data.notifications.interval || 'immediate');
+            $('#notificationTemplate').val(data.notifications.template || '');
+
+            // 加载安全设置
+            $('#sessionTimeout').val(data.security.session_timeout || 60);
+            $('#ipWhitelist').prop('checked', data.security.ip_whitelist || false);
+            $('#allowedIPs').val(data.security.allowed_ips || '');
+            $('#rateLimit').prop('checked', data.security.rate_limit !== false);
+            $('#maxRequests').val(data.security.max_requests || 100);
+            $('#blockDuration').val(data.security.block_duration || 30);
+
+            if (data.security.ip_whitelist) {
+                $('#whitelistIps').show();
+            }
+        }).fail(function () {
+            showAlert('加载设置失败', 'danger');
+        });
+    }
+
+    function loadSystemStats() {
+        // 加载统计数据
+        $.get('/api/logs/stats', function (data) {
+            $('#totalRequests').text(data.total);
+        });
+
+        $.get('/api/templates', function (data) {
+            $('#templateCount').text(data.length);
+        });
+
+        $.get('/api/payloads', function (data) {
+            $('#payloadCount').text(data.length);
+        });
+
+        // 计算数据文件大小
+        $.get('/api/logs', { limit: 1 }, function (data) {
+            // 模拟文件大小计算
+            const estimatedSize = data.total * 2; // 每条记录约2KB
+            $('#dataSize').text(estimatedSize > 1024 ? (estimatedSize / 1024).toFixed(1) + ' MB' : estimatedSize + ' KB');
+        });
+    }
+
+    function saveSMTPSettings() {
+        const settings = {
+            smtp: {
+                enabled: $('#smtpEnabled').prop('checked'),
+                server: $('#smtpServer').val(),
+                port: parseInt($('#smtpPort').val()),
+                username: $('#smtpUsername').val(),
+                password: $('#smtpPassword').val(),
+                recipient: $('#smtpRecipient').val(),
+                security: $('#smtpSecurity').val()
+            }
+        };
+
+        $.ajax({
+            url: '/api/settings',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify(settings),
+            success: function (response) {
+                if (response.success) {
+                    showAlert('SMTP设置保存成功', 'success');
+                    // 清空密码字段
+                    $('#smtpPassword').val('');
+                } else {
+                    showAlert(response.message, 'danger');
+                }
+            },
+            error: function () {
+                showAlert('保存失败，请重试', 'danger');
+            }
+        });
+    }
+
+    function saveNotificationSettings() {
+        const settings = {
+            notifications: {
+                email_enabled: $('#emailNotifications').prop('checked'),
+                new_request_alert: $('#newRequestAlert').prop('checked'),
+                interval: $('#notificationInterval').val(),
+                template: $('#notificationTemplate').val()
+            }
+        };
+
+        $.ajax({
+            url: '/api/settings',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify(settings),
+            success: function (response) {
+                if (response.success) {
+                    showAlert('通知设置保存成功', 'success');
+                } else {
+                    showAlert(response.message, 'danger');
+                }
+            },
+            error: function () {
+                showAlert('保存失败，请重试', 'danger');
+            }
+        });
+    }
+
+    function saveSecuritySettings() {
+        const settings = {
+            security: {
+                session_timeout: parseInt($('#sessionTimeout').val()),
+                ip_whitelist: $('#ipWhitelist').prop('checked'),
+                allowed_ips: $('#allowedIPs').val(),
+                rate_limit: $('#rateLimit').prop('checked'),
+                max_requests: parseInt($('#maxRequests').val()),
+                block_duration: parseInt($('#blockDuration').val())
+            }
+        };
+
+        $.ajax({
+            url: '/api/settings',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify(settings),
+            success: function (response) {
+                if (response.success) {
+                    showAlert('安全设置保存成功', 'success');
+                } else {
+                    showAlert(response.message, 'danger');
+                }
+            },
+            error: function () {
+                showAlert('保存失败，请重试', 'danger');
+            }
+        });
+    }
+
+    function testSMTP() {
+        const settings = {
+            server: $('#smtpServer').val(),
+            port: parseInt($('#smtpPort').val()),
+            username: $('#smtpUsername').val(),
+            password: $('#smtpPassword').val(),
+            recipient: $('#smtpRecipient').val(),
+            security: $('#smtpSecurity').val()
+        };
+
+        if (!settings.server || !settings.username || !settings.recipient) {
+            showAlert('请填写完整的SMTP配置信息', 'warning');
+            return;
+        }
+
+        $.ajax({
+            url: '/api/settings/test-smtp',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify(settings),
+            success: function (response) {
+                if (response.success) {
+                    showAlert('测试邮件发送成功', 'success');
+                } else {
+                    showAlert('测试邮件发送失败: ' + response.message, 'danger');
+                }
+            },
+            error: function () {
+                showAlert('测试失败，请检查配置', 'danger');
+            }
+        });
+    }
+
+    function togglePasswordVisibility(inputId) {
+        const input = $(`#${inputId}`);
+        const type = input.attr('type');
+        input.attr('type', type === 'password' ? 'text' : 'password');
+    }
+
+    function backupData() {
+        showAlert('正在生成备份文件...', 'info');
+
+        // 这里应该调用备份API
+        setTimeout(function () {
+            showAlert('备份功能开发中...', 'info');
+        }, 1000);
+    }
+
+    function clearSessions() {
+        if (confirm('确定要清理所有会话文件吗？这将使所有用户需要重新登录。')) {
+            showAlert('正在清理会话文件...', 'info');
+
+            setTimeout(function () {
+                showAlert('会话清理功能开发中...', 'info');
+            }, 1000);
+        }
+    }
+
+    function resetSystem() {
+        if (confirm('确定要重置系统吗？这将清除所有数据并恢复默认设置！')) {
+            if (confirm('此操作不可恢复，请再次确认！')) {
+                showAlert('系统重置功能开发中...', 'info');
+            }
+        }
+    }
+</script>
+{% endblock %}
